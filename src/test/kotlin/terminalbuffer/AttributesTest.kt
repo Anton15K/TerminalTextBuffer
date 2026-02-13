@@ -10,8 +10,9 @@ class AttributesTest {
 
         buffer.setForeground(Color.CYAN)
         buffer.setBackground(Color.BRIGHT_BLACK)
+        buffer.write("X")
 
-        val attrs = buffer.getCurrentAttributesForTest()
+        val attrs = buffer.getAttributes(0, 0)
         assertEquals(Color.CYAN, attrs.fg)
         assertEquals(Color.BRIGHT_BLACK, attrs.bg)
     }
@@ -22,11 +23,14 @@ class AttributesTest {
 
         buffer.setStyle(Style.BOLD)
         buffer.setStyle(Style.BOLD, Style.UNDERLINE)
+        buffer.write("X")
 
-        assertEquals(setOf(Style.BOLD, Style.UNDERLINE), buffer.getCurrentAttributesForTest().styles)
+        assertEquals(setOf(Style.BOLD, Style.UNDERLINE), buffer.getAttributes(0, 0).styles)
 
         buffer.resetStyle()
-        assertEquals(emptySet(), buffer.getCurrentAttributesForTest().styles)
+        buffer.setCursor(1, 0)
+        buffer.write("Y")
+        assertEquals(emptySet(), buffer.getAttributes(1, 0).styles)
     }
 
     @Test
@@ -38,7 +42,8 @@ class AttributesTest {
         buffer.setStyle(Style.ITALIC)
 
         buffer.resetAttributes()
+        buffer.write("X")
 
-        assertEquals(TextAttributes(), buffer.getCurrentAttributesForTest())
+        assertEquals(TextAttributes(), buffer.getAttributes(0, 0))
     }
 }

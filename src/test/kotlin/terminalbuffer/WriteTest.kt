@@ -57,11 +57,11 @@ class WriteTest {
         buffer.setStyle(Style.BOLD, Style.UNDERLINE)
         buffer.write("A")
 
-        val cell = buffer.getCellForTest(0, 0)
-        assertEquals('A', cell.char)
-        assertEquals(Color.YELLOW, cell.fg)
-        assertEquals(Color.BLUE, cell.bg)
-        assertEquals(setOf(Style.BOLD, Style.UNDERLINE), cell.style)
+        assertEquals('A', buffer.getChar(0, 0))
+        assertEquals(
+            TextAttributes(Color.YELLOW, Color.BLUE, setOf(Style.BOLD, Style.UNDERLINE)),
+            buffer.getAttributes(0, 0),
+        )
     }
 
     @Test
@@ -74,7 +74,7 @@ class WriteTest {
 
         assertEquals("****", rowAsString(buffer, 1))
         assertEquals(CursorPosition(2, 1), buffer.getCursor())
-        assertEquals(Color.CYAN, buffer.getCellForTest(0, 1).fg)
+        assertEquals(Color.CYAN, buffer.getAttributes(0, 1).fg)
     }
 
     @Test
@@ -85,13 +85,13 @@ class WriteTest {
         buffer.fillLine(null)
 
         assertEquals("   ", rowAsString(buffer, 0))
-        assertEquals(Color.GREEN, buffer.getCellForTest(1, 0).fg)
+        assertEquals(Color.GREEN, buffer.getAttributes(1, 0).fg)
     }
 
     private fun rowAsString(buffer: TerminalBuffer, row: Int): String {
         val chars = CharArray(buffer.width)
         for (col in 0 until buffer.width) {
-            chars[col] = buffer.getCellForTest(col, row).char
+            chars[col] = buffer.getChar(col, row)
         }
         return String(chars)
     }

@@ -6,6 +6,7 @@ class TerminalBuffer(
     val maxScrollback: Int,
 ) {
     private val screen: Array<Row>
+    private val scrollback = ArrayDeque<Row>()
     private var cursorColumn: Int = 0
     private var cursorRow: Int = 0
     private var currentAttributes = TextAttributes()
@@ -94,8 +95,61 @@ class TerminalBuffer(
         screen[cursorRow].fillWith(char, currentAttributes)
     }
 
-    internal fun getCurrentAttributesForTest(): TextAttributes = currentAttributes
-    internal fun getCellForTest(col: Int, row: Int): Cell = screen[row][col]
+    fun insertLineAtBottom() {
+        if (maxScrollback > 0) {
+            scrollback.addLast(copyRow(screen[0]))
+            if (scrollback.size > maxScrollback) {
+                scrollback.removeFirst()
+            }
+        }
+
+        for (row in 0 until (height - 1)) {
+            screen[row] = screen[row + 1]
+        }
+        screen[height - 1] = Row(width)
+    }
+
+    fun clearScreen() {
+        for (row in 0 until height) {
+            screen[row] = Row(width)
+        }
+        cursorColumn = 0
+        cursorRow = 0
+    }
+
+    fun clearAll() {
+        clearScreen()
+        scrollback.clear()
+    }
+
+    fun getChar(col: Int, row: Int): Char = screen[row][col].char
+
+    fun getCharFromScrollback(col: Int, scrollbackRow: Int): Char =
+        getScrollbackRowByRecentIndex(scrollbackRow)[col].char
+
+    fun getAttributes(col: Int, row: Int): TextAttributes {
+        val cell = screen[row][col]
+        return TextAttributes(cell.fg, cell.bg, cell.style)
+    }
+
+    fun getAttributesFromScrollback(col: Int, scrollbackRow: Int): TextAttributes {
+        val cell = getScrollbackRowByRecentIndex(scrollbackRow)[col]
+        return TextAttributes(cell.fg, cell.bg, cell.style)
+    }
+
+    fun getLine(row: Int): String = screen[row].asString()
+
+    fun getScrollbackLine(scrollbackRow: Int): String = getScrollbackRowByRecentIndex(scrollbackRow).asString()
+
+    fun getScreenContent(): String = screen.joinToString("\n") { it.asString() }
+
+    fun getFullContent(): String {
+        val allRows = buildList {
+            addAll(scrollback)
+            addAll(screen)
+        }
+        return allRows.joinToString("\n") { it.asString() }
+    }
 
     private fun insertSingleChar(char: Char) {
         var carry = makeCell(char)
@@ -140,6 +194,20 @@ class TerminalBuffer(
         bg = currentAttributes.bg,
         style = currentAttributes.styles,
     )
+
+    private fun copyRow(source: Row): Row {
+        val copy = Row(width)
+        for (column in 0 until width) {
+            copy[column] = source[column]
+        }
+        return copy
+    }
+
+    private fun getScrollbackRowByRecentIndex(scrollbackRow: Int): Row {
+        require(scrollbackRow in 0 until scrollback.size) { "scrollback row out of bounds" }
+        val indexFromOldest = scrollback.size - 1 - scrollbackRow
+        return scrollback.elementAt(indexFromOldest)
+    }
 
     private fun isEmptyDefaultCell(cell: Cell): Boolean =
         cell.char == ' ' &&
