@@ -1,5 +1,7 @@
 plugins {
     kotlin("jvm") version "2.3.0"
+    jacoco
+    id("me.champeau.jmh") version "0.7.3"
 }
 
 group = "org.example"
@@ -19,6 +21,21 @@ kotlin {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+jmh {
+    fork.set(1)
+    warmupIterations.set(3)
+    iterations.set(5)
 }
 
 tasks.register<JavaExec>("runBufferUiDemo") {
