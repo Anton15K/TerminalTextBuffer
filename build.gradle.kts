@@ -20,3 +20,10 @@ kotlin {
 tasks.test {
     useJUnitPlatform()
 }
+
+tasks.register<JavaExec>("runBufferUiDemo") {
+    group = "application"
+    description = "Runs the Swing UI demo for TerminalBuffer"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("terminalbuffer.demo.BufferUiDemoKt")
+}

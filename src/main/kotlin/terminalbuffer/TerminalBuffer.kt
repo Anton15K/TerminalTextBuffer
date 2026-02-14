@@ -86,8 +86,8 @@ class TerminalBuffer(
         if (text.isEmpty()) return
 
         for (char in text) {
-            insertSingleChar(char)
-            advanceCursorWithWrap()
+            val scrolled = insertSingleChar(char)
+            advanceCursorWithWrap(scrolled)
         }
     }
 
@@ -151,8 +151,9 @@ class TerminalBuffer(
         return allRows.joinToString("\n") { it.asString() }
     }
 
-    private fun insertSingleChar(char: Char) {
+    private fun insertSingleChar(char: Char): Boolean {
         var carry = makeCell(char)
+        var scrolled = false
 
         for (row in cursorRow until height) {
             val rowObj = screen[row]
@@ -167,12 +168,20 @@ class TerminalBuffer(
             carry = overflow
 
             if (isEmptyDefaultCell(carry)) {
-                break
+                return false
             }
         }
+
+        if (!isEmptyDefaultCell(carry)) {
+            insertLineAtBottom()
+            screen[height - 1][0] = carry
+            scrolled = true
+        }
+
+        return scrolled
     }
 
-    private fun advanceCursorWithWrap() {
+    private fun advanceCursorWithWrap(scrolledByInsert: Boolean) {
         if (cursorColumn < width - 1) {
             cursorColumn += 1
             return
@@ -184,7 +193,11 @@ class TerminalBuffer(
             return
         }
 
-        cursorColumn = width - 1
+        if (!scrolledByInsert) {
+            insertLineAtBottom()
+        }
+
+        cursorColumn = 0
         cursorRow = height - 1
     }
 
