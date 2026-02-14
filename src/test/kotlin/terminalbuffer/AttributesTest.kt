@@ -46,4 +46,23 @@ class AttributesTest {
 
         assertEquals(TextAttributes(), buffer.getAttributes(0, 0))
     }
+
+    @Test
+    fun `attributes remain independent between cells after pen changes`() {
+        val buffer = TerminalBuffer(width = 4, height = 2, maxScrollback = 5)
+
+        buffer.setForeground(Color.RED)
+        buffer.write("A")
+
+        buffer.setForeground(Color.BLUE)
+        buffer.setBackground(Color.BRIGHT_WHITE)
+        buffer.setStyle(Style.BOLD)
+        buffer.write("B")
+
+        assertEquals(TextAttributes(Color.RED, Color.DEFAULT, emptySet()), buffer.getAttributes(0, 0))
+        assertEquals(
+            TextAttributes(Color.BLUE, Color.BRIGHT_WHITE, setOf(Style.BOLD)),
+            buffer.getAttributes(1, 0),
+        )
+    }
 }

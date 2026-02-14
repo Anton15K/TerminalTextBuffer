@@ -46,12 +46,16 @@ class ScrollbackTest {
         assertEquals("222", buffer.getScrollbackLine(1))
         assertFailsWith<IllegalArgumentException> { buffer.getScrollbackLine(2) }
     }
-}
 
-private fun rowAsString(buffer: TerminalBuffer, row: Int): String {
-    val chars = CharArray(buffer.width)
-    for (col in 0 until buffer.width) {
-        chars[col] = buffer.getChar(col, row)
+    @Test
+    fun `insertLineAtBottom does not move cursor`() {
+        val buffer = TerminalBuffer(width = 4, height = 3, maxScrollback = 3)
+
+        buffer.setCursor(2, 1)
+        val before = buffer.getCursor()
+
+        buffer.insertLineAtBottom()
+
+        assertEquals(before, buffer.getCursor())
     }
-    return String(chars)
 }

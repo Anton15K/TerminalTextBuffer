@@ -57,11 +57,54 @@ class InsertTest {
         assertEquals("GH  ", rowAsString(buffer, 2))
     }
 
-    private fun rowAsString(buffer: TerminalBuffer, row: Int): String {
-        val chars = CharArray(buffer.width)
-        for (col in 0 until buffer.width) {
-            chars[col] = buffer.getChar(col, row)
-        }
-        return String(chars)
+    @Test
+    fun `insert applies current attributes to inserted characters`() {
+        val buffer = TerminalBuffer(width = 5, height = 3, maxScrollback = 5)
+
+        buffer.write("ABCDE")
+        buffer.setCursor(1, 0)
+        buffer.setForeground(Color.MAGENTA)
+        buffer.setBackground(Color.BRIGHT_BLACK)
+        buffer.setStyle(Style.ITALIC)
+
+        buffer.insert("Z")
+
+        assertEquals('Z', buffer.getChar(1, 0))
+        assertEquals(
+            TextAttributes(Color.MAGENTA, Color.BRIGHT_BLACK, setOf(Style.ITALIC)),
+            buffer.getAttributes(1, 0),
+        )
+    }
+
+    @Test
+    fun `insert can trigger multiple scrolls`() {
+        val buffer = TerminalBuffer(width = 2, height = 2, maxScrollback = 10)
+
+        buffer.write("ab")
+        buffer.setCursor(0, 1)
+        buffer.write("cd")
+        buffer.setCursor(1, 1)
+
+        buffer.insert("XYZ")
+
+        assertEquals("cX", buffer.getScrollbackLine(0))
+        assertEquals("ab", buffer.getScrollbackLine(1))
+        assertEquals("YZ", buffer.getLine(0))
+        assertEquals("d", buffer.getLine(1))
+    }
+
+    @Test
+    fun `insert empty string does not change content or cursor`() {
+        val buffer = TerminalBuffer(width = 4, height = 2, maxScrollback = 3)
+
+        buffer.write("AB")
+        buffer.setCursor(1, 0)
+        val before = buffer.getScreenContent()
+        val beforeCursor = buffer.getCursor()
+
+        buffer.insert("")
+
+        assertEquals(before, buffer.getScreenContent())
+        assertEquals(beforeCursor, buffer.getCursor())
     }
 }

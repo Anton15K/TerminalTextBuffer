@@ -29,6 +29,15 @@ class ContentAccessTest {
     }
 
     @Test
+    fun `getLine on full row returns complete string`() {
+        val buffer = TerminalBuffer(width = 4, height = 2, maxScrollback = 2)
+
+        buffer.write("ABCD")
+
+        assertEquals("ABCD", buffer.getLine(0))
+    }
+
+    @Test
     fun `getScreenContent joins all rows with newlines`() {
         val buffer = TerminalBuffer(width = 4, height = 3, maxScrollback = 2)
 
@@ -56,6 +65,18 @@ class ContentAccessTest {
         assertEquals("111", buffer.getScrollbackLine(1))
         assertEquals('2', buffer.getCharFromScrollback(0, 0))
         assertEquals('1', buffer.getCharFromScrollback(0, 1))
+    }
+
+    @Test
+    fun `getScrollbackLine on full row returns complete string`() {
+        val buffer = TerminalBuffer(width = 4, height = 2, maxScrollback = 2)
+
+        buffer.write("ABCD")
+        buffer.setCursor(0, 1)
+        buffer.write("EFGH")
+        buffer.insertLineAtBottom()
+
+        assertEquals("ABCD", buffer.getScrollbackLine(0))
     }
 
     @Test
@@ -88,6 +109,17 @@ class ContentAccessTest {
     }
 
     @Test
+    fun `getFullContent with empty scrollback returns screen only`() {
+        val buffer = TerminalBuffer(width = 3, height = 2, maxScrollback = 2)
+
+        buffer.write("AB")
+        buffer.setCursor(0, 1)
+        buffer.write("CD")
+
+        assertEquals("AB\nCD", buffer.getFullContent())
+    }
+
+    @Test
     fun `scrollback access out of bounds throws clear error`() {
         val buffer = TerminalBuffer(width = 3, height = 2, maxScrollback = 1)
 
@@ -96,5 +128,31 @@ class ContentAccessTest {
         }
 
         assertEquals("scrollback row out of bounds", error.message)
+    }
+
+    @Test
+    fun `screen char access out of bounds throws clear error`() {
+        val buffer = TerminalBuffer(width = 3, height = 2, maxScrollback = 1)
+
+        val colError = assertFailsWith<IllegalArgumentException> {
+            buffer.getChar(3, 0)
+        }
+        assertEquals("screen column out of bounds", colError.message)
+
+        val rowError = assertFailsWith<IllegalArgumentException> {
+            buffer.getChar(0, 2)
+        }
+        assertEquals("screen row out of bounds", rowError.message)
+    }
+
+    @Test
+    fun `screen attribute access out of bounds throws clear error`() {
+        val buffer = TerminalBuffer(width = 3, height = 2, maxScrollback = 1)
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            buffer.getAttributes(-1, 0)
+        }
+
+        assertEquals("screen column out of bounds", error.message)
     }
 }

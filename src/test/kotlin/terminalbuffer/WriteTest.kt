@@ -81,18 +81,12 @@ class WriteTest {
     fun `fillLine null clears row with current attributes`() {
         val buffer = TerminalBuffer(width = 3, height = 2, maxScrollback = 5)
 
+        buffer.write("XYZ")
+        assertEquals("XYZ", rowAsString(buffer, 0))
         buffer.setForeground(Color.GREEN)
         buffer.fillLine(null)
 
         assertEquals("   ", rowAsString(buffer, 0))
         assertEquals(Color.GREEN, buffer.getAttributes(1, 0).fg)
-    }
-
-    private fun rowAsString(buffer: TerminalBuffer, row: Int): String {
-        val chars = CharArray(buffer.width)
-        for (col in 0 until buffer.width) {
-            chars[col] = buffer.getChar(col, row)
-        }
-        return String(chars)
     }
 }
