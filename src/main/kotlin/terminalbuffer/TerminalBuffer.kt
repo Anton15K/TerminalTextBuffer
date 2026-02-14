@@ -103,6 +103,8 @@ class TerminalBuffer(
             }
         }
 
+        // Rows are intentionally moved by reference within the screen region.
+        // Only scrollback receives a detached copy of the previous top row.
         for (row in 0 until (height - 1)) {
             screen[row] = screen[row + 1]
         }
@@ -122,12 +124,16 @@ class TerminalBuffer(
         scrollback.clear()
     }
 
-    fun getChar(col: Int, row: Int): Char = screen[row][col].char
+    fun getChar(col: Int, row: Int): Char {
+        requireScreenPosition(col, row)
+        return screen[row][col].char
+    }
 
     fun getCharFromScrollback(col: Int, scrollbackRow: Int): Char =
         getScrollbackRowByRecentIndex(scrollbackRow)[col].char
 
     fun getAttributes(col: Int, row: Int): TextAttributes {
+        requireScreenPosition(col, row)
         val cell = screen[row][col]
         return TextAttributes(cell.fg, cell.bg, cell.style)
     }
@@ -220,6 +226,11 @@ class TerminalBuffer(
         require(scrollbackRow in 0 until scrollback.size) { "scrollback row out of bounds" }
         val indexFromOldest = scrollback.size - 1 - scrollbackRow
         return scrollback.elementAt(indexFromOldest)
+    }
+
+    private fun requireScreenPosition(col: Int, row: Int) {
+        require(col in 0 until width) { "screen column out of bounds" }
+        require(row in 0 until height) { "screen row out of bounds" }
     }
 
     private fun isEmptyDefaultCell(cell: Cell): Boolean =
