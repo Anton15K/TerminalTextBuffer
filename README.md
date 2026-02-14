@@ -28,8 +28,10 @@ When a line is inserted at the bottom, the top screen row is pushed to scrollbac
 - **Color as enum** (`DEFAULT + 16 ANSI`) over RGB values: type-safe and aligned to task requirements.
 - **Styles as enum set** (`Set<Style>`) over manual bitmasks: clear and idiomatic Kotlin API.
 - **`write` vs `insert`**:
-  - `write` overwrites cells in-place and truncates at right edge.
+  - `write` overwrites cells in-place and truncates at right edge (no automatic multi-line wrap).
+  - If `write` reaches the right edge, cursor remains clamped at the last column.
   - `insert` shifts content right, wraps across rows, and scrolls when wrapping beyond the last row.
+- **Cursor and scrolling**: `insertLineAtBottom()` does not change cursor coordinates; screen content shifts under a stable cursor position.
 - **Scrollback eviction**: `ArrayDeque` with FIFO cap (`removeFirst` when above max size).
 
 ## Possible improvements
