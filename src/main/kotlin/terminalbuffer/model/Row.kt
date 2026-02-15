@@ -1,5 +1,10 @@
-package terminalbuffer
+package terminalbuffer.model
 
+/**
+ * A fixed-width row of [Cell]s representing one line of terminal content.
+ *
+ * @property width number of columns (must be > 0)
+ */
 class Row(
     val width: Int,
 ) {

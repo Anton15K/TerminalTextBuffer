@@ -1,22 +1,31 @@
 package terminalbuffer
 
+import terminalbuffer.model.Cell
+import terminalbuffer.model.Color
+import terminalbuffer.model.CursorPosition
+import terminalbuffer.model.Style
+import terminalbuffer.model.TextAttributes
+import terminalbuffer.screen.ScreenGrid
+import terminalbuffer.scrollback.ScrollbackBuffer
+
+/**
+ * Default implementation of [Terminal] backed by a [ScreenGrid] and
+ * a [ScrollbackBuffer].
+ *
+ * @param width  screen width in columns (must be > 0)
+ * @param height screen height in rows (must be > 0)
+ * @param maxScrollback maximum scrollback rows to retain (0 to disable)
+ */
 class TerminalBuffer(
     override val width: Int,
     override val height: Int,
     override val maxScrollback: Int,
 ) : Terminal {
-    private val screen: Array<Row>
-    private val scrollback = ArrayDeque<Row>()
+    private val screen = ScreenGrid(width, height)
+    private val scrollback = ScrollbackBuffer(maxScrollback)
     private var cursorColumn: Int = 0
     private var cursorRow: Int = 0
     private var currentAttributes = TextAttributes()
-
-    init {
-        require(width > 0) { "width must be greater than 0" }
-        require(height > 0) { "height must be greater than 0" }
-        require(maxScrollback >= 0) { "maxScrollback must be non-negative" }
-        screen = Array(height) { Row(width) }
-    }
 
     override fun getCursor(): CursorPosition = CursorPosition(cursorColumn, cursorRow)
 
@@ -72,7 +81,7 @@ class TerminalBuffer(
         var written = 0
         for (char in text) {
             if (col >= width) break
-            screen[cursorRow][col] = makeCell(char)
+            screen.setCell(col, cursorRow, makeCell(char))
             col += 1
             written += 1
         }
@@ -92,29 +101,16 @@ class TerminalBuffer(
     }
 
     override fun fillLine(char: Char?) {
-        screen[cursorRow].fillWith(char, currentAttributes)
+        screen.fillRow(cursorRow, char, currentAttributes)
     }
 
     override fun insertLineAtBottom() {
-        if (maxScrollback > 0) {
-            scrollback.addLast(copyRow(screen[0]))
-            if (scrollback.size > maxScrollback) {
-                scrollback.removeFirst()
-            }
-        }
-
-        // Rows are intentionally moved by reference within the screen region.
-        // Only scrollback receives a detached copy of the previous top row.
-        for (row in 0 until (height - 1)) {
-            screen[row] = screen[row + 1]
-        }
-        screen[height - 1] = Row(width)
+        val detached = screen.shiftRowsUp()
+        scrollback.push(detached)
     }
 
     override fun clearScreen() {
-        for (row in 0 until height) {
-            screen[row] = Row(width)
-        }
+        screen.clearAll()
         cursorColumn = 0
         cursorRow = 0
     }
@@ -124,51 +120,36 @@ class TerminalBuffer(
         scrollback.clear()
     }
 
-    override fun getChar(col: Int, row: Int): Char {
-        requireScreenPosition(col, row)
-        return screen[row][col].char
-    }
+    override fun getChar(col: Int, row: Int): Char = screen.getCell(col, row).char
 
     override fun getCharFromScrollback(col: Int, scrollbackRow: Int): Char =
-        getScrollbackRowByRecentIndex(scrollbackRow)[col].char
+        scrollback.getCell(col, scrollbackRow).char
 
     override fun getAttributes(col: Int, row: Int): TextAttributes {
-        requireScreenPosition(col, row)
-        val cell = screen[row][col]
+        val cell = screen.getCell(col, row)
         return TextAttributes(cell.fg, cell.bg, cell.style)
     }
 
     override fun getAttributesFromScrollback(col: Int, scrollbackRow: Int): TextAttributes {
-        val cell = getScrollbackRowByRecentIndex(scrollbackRow)[col]
+        val cell = scrollback.getCell(col, scrollbackRow)
         return TextAttributes(cell.fg, cell.bg, cell.style)
     }
 
-    override fun getLine(row: Int): String = screen[row].asString()
+    override fun getLine(row: Int): String = screen.getRowAsString(row)
 
-    override fun getScrollbackLine(scrollbackRow: Int): String = getScrollbackRowByRecentIndex(scrollbackRow).asString()
+    override fun getScrollbackLine(scrollbackRow: Int): String =
+        scrollback.getLine(scrollbackRow).asString()
 
-    override fun getScreenContent(): String {
-        val sb = StringBuilder(height * (width + 1))
-        for (i in 0 until height) {
-            if (i > 0) sb.append('\n')
-            sb.append(screen[i].asString())
-        }
-        return sb.toString()
-    }
+    override fun getScreenContent(): String = screen.asString()
 
     override fun getFullContent(): String {
-        val totalRows = scrollback.size + height
-        val sb = StringBuilder(totalRows * (width + 1))
-        for ((i, row) in scrollback.withIndex()) {
-            if (i > 0) sb.append('\n')
-            sb.append(row.asString())
+        val scrollbackContent = scrollback.asString()
+        val screenContent = screen.asString()
+        return if (scrollbackContent.isEmpty()) {
+            screenContent
+        } else {
+            "$scrollbackContent\n$screenContent"
         }
-        if (scrollback.isNotEmpty()) sb.append('\n')
-        for (i in 0 until height) {
-            if (i > 0) sb.append('\n')
-            sb.append(screen[i].asString())
-        }
-        return sb.toString()
     }
 
     private fun insertSingleChar(char: Char): Boolean {
@@ -227,25 +208,6 @@ class TerminalBuffer(
         bg = currentAttributes.bg,
         style = currentAttributes.styles,
     )
-
-    private fun copyRow(source: Row): Row {
-        val copy = Row(width)
-        for (column in 0 until width) {
-            copy[column] = source[column]
-        }
-        return copy
-    }
-
-    private fun getScrollbackRowByRecentIndex(scrollbackRow: Int): Row {
-        require(scrollbackRow in 0 until scrollback.size) { "scrollback row out of bounds" }
-        val indexFromOldest = scrollback.size - 1 - scrollbackRow
-        return scrollback.elementAt(indexFromOldest)
-    }
-
-    private fun requireScreenPosition(col: Int, row: Int) {
-        require(col in 0 until width) { "screen column out of bounds" }
-        require(row in 0 until height) { "screen row out of bounds" }
-    }
 
     private fun isEmptyDefaultCell(cell: Cell): Boolean =
         cell.char == ' ' &&

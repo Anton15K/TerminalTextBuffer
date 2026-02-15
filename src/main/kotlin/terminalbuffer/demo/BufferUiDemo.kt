@@ -18,9 +18,9 @@ import javax.swing.JSplitPane
 import javax.swing.JTextArea
 import javax.swing.JTextField
 import javax.swing.SwingUtilities
-import terminalbuffer.Color
-import terminalbuffer.Style
 import terminalbuffer.TerminalBuffer
+import terminalbuffer.model.Color
+import terminalbuffer.model.Style
 
 fun main() {
     SwingUtilities.invokeLater {

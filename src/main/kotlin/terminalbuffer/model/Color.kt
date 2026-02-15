@@ -1,5 +1,6 @@
-package terminalbuffer
+package terminalbuffer.model
 
+/** Standard ANSI terminal colors (8 normal + 8 bright) plus a [DEFAULT] sentinel. */
 enum class Color {
     DEFAULT,
     BLACK,

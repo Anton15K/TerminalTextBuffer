@@ -1,5 +1,7 @@
 package terminalbuffer
 
+import terminalbuffer.model.Cell
+import terminalbuffer.model.Color
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

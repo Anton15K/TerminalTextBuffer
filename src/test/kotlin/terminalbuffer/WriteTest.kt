@@ -1,5 +1,9 @@
 package terminalbuffer
 
+import terminalbuffer.model.Color
+import terminalbuffer.model.CursorPosition
+import terminalbuffer.model.Style
+import terminalbuffer.model.TextAttributes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

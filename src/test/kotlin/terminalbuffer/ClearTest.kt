@@ -1,5 +1,6 @@
 package terminalbuffer
 
+import terminalbuffer.model.CursorPosition
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

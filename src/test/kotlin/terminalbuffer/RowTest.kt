@@ -1,5 +1,10 @@
 package terminalbuffer
 
+import terminalbuffer.model.Cell
+import terminalbuffer.model.Color
+import terminalbuffer.model.Row
+import terminalbuffer.model.Style
+import terminalbuffer.model.TextAttributes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
