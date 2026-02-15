@@ -1,10 +1,10 @@
 package terminalbuffer
 
 class TerminalBuffer(
-    val width: Int,
-    val height: Int,
-    val maxScrollback: Int,
-) {
+    override val width: Int,
+    override val height: Int,
+    override val maxScrollback: Int,
+) : Terminal {
     private val screen: Array<Row>
     private val scrollback = ArrayDeque<Row>()
     private var cursorColumn: Int = 0
@@ -18,54 +18,54 @@ class TerminalBuffer(
         screen = Array(height) { Row(width) }
     }
 
-    fun getCursor(): CursorPosition = CursorPosition(cursorColumn, cursorRow)
+    override fun getCursor(): CursorPosition = CursorPosition(cursorColumn, cursorRow)
 
-    fun setCursor(col: Int, row: Int) {
+    override fun setCursor(col: Int, row: Int) {
         cursorColumn = clampColumn(col)
         cursorRow = clampRow(row)
     }
 
-    fun moveCursorUp(n: Int) {
+    override fun moveCursorUp(n: Int) {
         if (n <= 0) return
         cursorRow = clampRow(cursorRow - n)
     }
 
-    fun moveCursorDown(n: Int) {
+    override fun moveCursorDown(n: Int) {
         if (n <= 0) return
         cursorRow = clampRow(cursorRow + n)
     }
 
-    fun moveCursorLeft(n: Int) {
+    override fun moveCursorLeft(n: Int) {
         if (n <= 0) return
         cursorColumn = clampColumn(cursorColumn - n)
     }
 
-    fun moveCursorRight(n: Int) {
+    override fun moveCursorRight(n: Int) {
         if (n <= 0) return
         cursorColumn = clampColumn(cursorColumn + n)
     }
 
-    fun setForeground(color: Color) {
+    override fun setForeground(color: Color) {
         currentAttributes = currentAttributes.copy(fg = color)
     }
 
-    fun setBackground(color: Color) {
+    override fun setBackground(color: Color) {
         currentAttributes = currentAttributes.copy(bg = color)
     }
 
-    fun setStyle(vararg styles: Style) {
+    override fun setStyle(vararg styles: Style) {
         currentAttributes = currentAttributes.copy(styles = currentAttributes.styles + styles)
     }
 
-    fun resetStyle() {
+    override fun resetStyle() {
         currentAttributes = currentAttributes.copy(styles = emptySet())
     }
 
-    fun resetAttributes() {
+    override fun resetAttributes() {
         currentAttributes = TextAttributes()
     }
 
-    fun write(text: String) {
+    override fun write(text: String) {
         if (text.isEmpty()) return
 
         var col = cursorColumn
@@ -82,7 +82,7 @@ class TerminalBuffer(
         }
     }
 
-    fun insert(text: String) {
+    override fun insert(text: String) {
         if (text.isEmpty()) return
 
         for (char in text) {
@@ -91,11 +91,11 @@ class TerminalBuffer(
         }
     }
 
-    fun fillLine(char: Char?) {
+    override fun fillLine(char: Char?) {
         screen[cursorRow].fillWith(char, currentAttributes)
     }
 
-    fun insertLineAtBottom() {
+    override fun insertLineAtBottom() {
         if (maxScrollback > 0) {
             scrollback.addLast(copyRow(screen[0]))
             if (scrollback.size > maxScrollback) {
@@ -111,7 +111,7 @@ class TerminalBuffer(
         screen[height - 1] = Row(width)
     }
 
-    fun clearScreen() {
+    override fun clearScreen() {
         for (row in 0 until height) {
             screen[row] = Row(width)
         }
@@ -119,35 +119,35 @@ class TerminalBuffer(
         cursorRow = 0
     }
 
-    fun clearAll() {
+    override fun clearAll() {
         clearScreen()
         scrollback.clear()
     }
 
-    fun getChar(col: Int, row: Int): Char {
+    override fun getChar(col: Int, row: Int): Char {
         requireScreenPosition(col, row)
         return screen[row][col].char
     }
 
-    fun getCharFromScrollback(col: Int, scrollbackRow: Int): Char =
+    override fun getCharFromScrollback(col: Int, scrollbackRow: Int): Char =
         getScrollbackRowByRecentIndex(scrollbackRow)[col].char
 
-    fun getAttributes(col: Int, row: Int): TextAttributes {
+    override fun getAttributes(col: Int, row: Int): TextAttributes {
         requireScreenPosition(col, row)
         val cell = screen[row][col]
         return TextAttributes(cell.fg, cell.bg, cell.style)
     }
 
-    fun getAttributesFromScrollback(col: Int, scrollbackRow: Int): TextAttributes {
+    override fun getAttributesFromScrollback(col: Int, scrollbackRow: Int): TextAttributes {
         val cell = getScrollbackRowByRecentIndex(scrollbackRow)[col]
         return TextAttributes(cell.fg, cell.bg, cell.style)
     }
 
-    fun getLine(row: Int): String = screen[row].asString()
+    override fun getLine(row: Int): String = screen[row].asString()
 
-    fun getScrollbackLine(scrollbackRow: Int): String = getScrollbackRowByRecentIndex(scrollbackRow).asString()
+    override fun getScrollbackLine(scrollbackRow: Int): String = getScrollbackRowByRecentIndex(scrollbackRow).asString()
 
-    fun getScreenContent(): String {
+    override fun getScreenContent(): String {
         val sb = StringBuilder(height * (width + 1))
         for (i in 0 until height) {
             if (i > 0) sb.append('\n')
@@ -156,7 +156,7 @@ class TerminalBuffer(
         return sb.toString()
     }
 
-    fun getFullContent(): String {
+    override fun getFullContent(): String {
         val totalRows = scrollback.size + height
         val sb = StringBuilder(totalRows * (width + 1))
         for ((i, row) in scrollback.withIndex()) {
