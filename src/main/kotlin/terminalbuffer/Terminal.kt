@@ -24,6 +24,9 @@ interface Terminal {
     /** Maximum number of scrollback rows retained. 0 disables scrollback. */
     val maxScrollback: Int
 
+    /** Number of rows currently stored in scrollback. */
+    val scrollbackSize: Int
+
     // ── Cursor ────────────────────────────────────────────────────────
 
     /** Returns the current cursor position. */
@@ -104,6 +107,19 @@ interface Terminal {
      * position does **not** change — content moves under the cursor.
      */
     fun insertLineAtBottom()
+
+    // ── Resize ────────────────────────────────────────────────────────
+
+    /**
+     * Resizes the terminal to [newWidth]×[newHeight].
+     *
+     * Width changes trigger content reflow (wrapped lines are merged/split).
+     * Height changes push excess rows to scrollback or pull them back.
+     * The cursor is clamped to the new bounds after resize.
+     *
+     * @throws IllegalArgumentException if [newWidth] or [newHeight] is <= 0.
+     */
+    fun resize(newWidth: Int, newHeight: Int)
 
     // ── Screen clearing ──────────────────────────────────────────────
 

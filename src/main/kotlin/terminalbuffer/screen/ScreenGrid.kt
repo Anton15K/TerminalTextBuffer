@@ -24,6 +24,10 @@ class ScreenGrid(
 
     operator fun get(row: Int): Row = rows[row]
 
+    operator fun set(row: Int, value: Row) {
+        rows[row] = value
+    }
+
     fun getCell(col: Int, row: Int): Cell {
         requirePosition(col, row)
         return rows[row][col]
@@ -50,11 +54,27 @@ class ScreenGrid(
         return detached
     }
 
+    /**
+     * Shifts all rows down by one. Returns the detached bottom row (before shifting)
+     * and inserts [newTop] at the top.
+     */
+    fun shiftRowsDown(newTop: Row): Row {
+        val detached = rows[height - 1]
+        for (row in (height - 1) downTo 1) {
+            rows[row] = rows[row - 1]
+        }
+        rows[0] = newTop
+        return detached
+    }
+
     fun clearAll() {
         for (row in 0 until height) {
             rows[row] = Row(width)
         }
     }
+
+    /** Returns a copy of the current rows (oldest to newest = top to bottom). */
+    fun getRows(): List<Row> = rows.toList()
 
     fun getRowAsString(row: Int): String = rows[row].asString()
 

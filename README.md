@@ -15,7 +15,8 @@ Build and test:
 The model is layered as:
 
 - `Cell` — one character with foreground/background `Color` and `Style` set.
-- `Row` — fixed-width `Array<Cell>` wrapper.
+- `Row` — fixed-width `Array<Cell>` wrapper. Carries a `wrapped` flag indicating the row's content continues on the next row (soft wrap).
+- `ReflowHelper` — standalone reflow algorithm that groups wrapped rows into logical lines and re-chunks them to a new width.
 - `TerminalBuffer` — owns:
   - `screen: Array<Row>` with `height` rows
   - `scrollback: ArrayDeque<Row>` capped by `maxScrollback`
@@ -33,13 +34,13 @@ When a line is inserted at the bottom, the top screen row is pushed to scrollbac
   - `insert` shifts content right, wraps across rows, and scrolls when wrapping beyond the last row.
 - **Cursor and scrolling**: `insertLineAtBottom()` does not change cursor coordinates; screen content shifts under a stable cursor position.
 - **Scrollback eviction**: `ArrayDeque` with FIFO cap (`removeFirst` when above max size).
+- **Resize — hybrid reflow width + simple height**: width changes trigger content reflow using the `wrapped` flag on `Row` to identify soft-wrapped logical lines. Consecutive wrapped rows are merged, cells are flattened, and re-chunked to the new width. Height changes push excess rows to scrollback or pull them back. Scrollback is also reflowed to the new width. This preserves content across width changes while keeping the implementation simple. The `wrapped` flag is tracked during `insert` operations (which produce soft wraps); `write` (which truncates at the edge) does not set it.
 
 ## Possible improvements
 
 - Replace screen shifting with a circular screen buffer to avoid row-copy shifts on scroll.
 - Add 256-color and true-color support.
 - Build ANSI/VT escape parser to drive buffer updates from terminal streams.
-- Add resize support with configurable strategy (truncate vs reflow).
 - Add full Unicode grapheme-cluster support (combining marks, ZWJ sequences, wide chars).
 
 ## Testing

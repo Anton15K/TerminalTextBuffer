@@ -51,6 +51,22 @@ class ScrollbackBuffer(
      */
     fun getCell(col: Int, recentIndex: Int): Cell = getLine(recentIndex)[col]
 
+    /** Returns all rows oldest-to-newest. */
+    fun getRows(): List<Row> = rows.toList()
+
+    /** Removes and returns the most recent row, or null if empty. */
+    fun popNewest(): Row? = if (rows.isEmpty()) null else rows.removeLast()
+
+    /** Clears and bulk-loads [newRows] (oldest-first), respecting maxSize. */
+    fun replaceAll(newRows: List<Row>) {
+        rows.clear()
+        if (maxSize == 0) return
+        val start = if (newRows.size > maxSize) newRows.size - maxSize else 0
+        for (i in start until newRows.size) {
+            rows.addLast(newRows[i])
+        }
+    }
+
     fun clear() {
         rows.clear()
     }
@@ -66,6 +82,7 @@ class ScrollbackBuffer(
 
     private fun copyRow(source: Row): Row {
         val copy = Row(source.width)
+        copy.wrapped = source.wrapped
         for (column in 0 until source.width) {
             copy[column] = source[column]
         }

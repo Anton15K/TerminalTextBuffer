@@ -3,8 +3,10 @@ package terminalbuffer
 import terminalbuffer.model.Cell
 import terminalbuffer.model.Color
 import terminalbuffer.model.CursorPosition
+import terminalbuffer.model.Row
 import terminalbuffer.model.Style
 import terminalbuffer.model.TextAttributes
+import terminalbuffer.resize.reflowRows
 import terminalbuffer.screen.ScreenGrid
 import terminalbuffer.scrollback.ScrollbackBuffer
 
@@ -17,12 +19,17 @@ import terminalbuffer.scrollback.ScrollbackBuffer
  * @param maxScrollback maximum scrollback rows to retain (0 to disable)
  */
 class TerminalBuffer(
-    override val width: Int,
-    override val height: Int,
+    width: Int,
+    height: Int,
     override val maxScrollback: Int,
 ) : Terminal {
-    private val screen = ScreenGrid(width, height)
-    private val scrollback = ScrollbackBuffer(maxScrollback)
+    override var width: Int = width
+        private set
+    override var height: Int = height
+        private set
+    override val scrollbackSize: Int get() = scrollback.size
+    private var screen = ScreenGrid(width, height)
+    private var scrollback = ScrollbackBuffer(maxScrollback)
     private var cursorColumn: Int = 0
     private var cursorRow: Int = 0
     private var currentAttributes = TextAttributes()
@@ -77,6 +84,16 @@ class TerminalBuffer(
     override fun write(text: String) {
         if (text.isEmpty()) return
 
+        // `write` is a direct overwrite operation and never creates soft wraps.
+        // Clear any stale wrap marker on the target row so later resize reflow
+        // does not incorrectly merge it with the next row.
+        screen[cursorRow].wrapped = false
+        if (cursorColumn == 0 && cursorRow > 0) {
+            // Rewriting a row from column 0 makes it a standalone line start.
+            // Break any stale continuation link from the previous row.
+            screen[cursorRow - 1].wrapped = false
+        }
+
         var col = cursorColumn
         var written = 0
         for (char in text) {
@@ -102,6 +119,10 @@ class TerminalBuffer(
 
     override fun fillLine(char: Char?) {
         screen.fillRow(cursorRow, char, currentAttributes)
+        screen[cursorRow].wrapped = false
+        if (cursorRow > 0) {
+            screen[cursorRow - 1].wrapped = false
+        }
     }
 
     override fun insertLineAtBottom() {
@@ -118,6 +139,52 @@ class TerminalBuffer(
     override fun clearAll() {
         clearScreen()
         scrollback.clear()
+    }
+
+    override fun resize(newWidth: Int, newHeight: Int) {
+        require(newWidth > 0) { "newWidth must be greater than 0" }
+        require(newHeight > 0) { "newHeight must be greater than 0" }
+        if (newWidth == width && newHeight == height) return
+
+        // Collect all rows: scrollback (oldest first) + screen (top to bottom)
+        // Trim trailing empty padding rows from screen (keep at least up to cursor row)
+        val screenRows = screen.getRows().toMutableList()
+        while (screenRows.size > cursorRow + 1 &&
+            !screenRows.last().wrapped &&
+            screenRows.last().asString().isEmpty()
+        ) {
+            screenRows.removeAt(screenRows.size - 1)
+        }
+        val allRows = scrollback.getRows() + screenRows
+
+        // Reflow to new width
+        val reflowed = reflowRows(allRows, newWidth)
+
+        // Rebuild screen and scrollback
+        val newScreen = ScreenGrid(newWidth, newHeight)
+        if (reflowed.size <= newHeight) {
+            // All reflowed rows fit on screen — no scrollback needed
+            for (i in reflowed.indices) {
+                newScreen[i] = reflowed[i]
+            }
+            scrollback.replaceAll(emptyList())
+        } else {
+            // Last newHeight rows go to screen, rest to scrollback
+            val scrollbackRows = reflowed.subList(0, reflowed.size - newHeight)
+            val screenRows = reflowed.subList(reflowed.size - newHeight, reflowed.size)
+            for (i in screenRows.indices) {
+                newScreen[i] = screenRows[i]
+            }
+            scrollback.replaceAll(scrollbackRows)
+        }
+
+        screen = newScreen
+        width = newWidth
+        height = newHeight
+
+        // Clamp cursor
+        cursorColumn = cursorColumn.coerceIn(0, newWidth - 1)
+        cursorRow = cursorRow.coerceIn(0, newHeight - 1)
     }
 
     override fun getChar(col: Int, row: Int): Char = screen.getCell(col, row).char
@@ -187,6 +254,9 @@ class TerminalBuffer(
             cursorColumn += 1
             return
         }
+
+        // Cursor is at right edge — mark source row as wrapped (soft wrap)
+        screen[cursorRow].wrapped = true
 
         if (cursorRow < height - 1) {
             cursorColumn = 0

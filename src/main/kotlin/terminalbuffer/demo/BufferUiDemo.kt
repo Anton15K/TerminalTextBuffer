@@ -29,10 +29,11 @@ fun main() {
 }
 
 private class BufferUiDemo {
-    private val buffer = TerminalBuffer(width = 24, height = 8, maxScrollback = 20)
+    private var buffer = TerminalBuffer(width = 24, height = 8, maxScrollback = 20)
 
     private var selectedFg: Color = Color.DEFAULT
     private var selectedBg: Color = Color.DEFAULT
+    private var viewOffset: Int = 0
 
     private val screenArea = JTextArea()
     private val fullArea = JTextArea()
@@ -43,6 +44,8 @@ private class BufferUiDemo {
     private val fillField = JTextField("*")
     private val colField = JTextField("0")
     private val rowField = JTextField("0")
+    private val resizeWidthField = JTextField("24")
+    private val resizeHeightField = JTextField("8")
 
     private val fgCombo = JComboBox(Color.entries.toTypedArray())
     private val bgCombo = JComboBox(Color.entries.toTypedArray())
@@ -87,6 +90,14 @@ private class BufferUiDemo {
             }
         })
         row1.add(button("Scroll +1") { perform("insertLineAtBottom") { buffer.insertLineAtBottom() } })
+        row1.add(button("View ↑") {
+            viewOffset = (viewOffset + 1).coerceAtMost(buffer.scrollbackSize)
+            refreshView("view ↑ (offset=$viewOffset)")
+        })
+        row1.add(button("View ↓") {
+            viewOffset = (viewOffset - 1).coerceAtLeast(0)
+            refreshView("view ↓ (offset=$viewOffset)")
+        })
         row1.add(button("Clear Screen") { perform("clearScreen") { buffer.clearScreen() } })
         row1.add(button("Clear All") { perform("clearAll") { buffer.clearAll() } })
         row1.add(button("Reset Attr") { perform("resetAttributes") { buffer.resetAttributes() } })
@@ -117,8 +128,22 @@ private class BufferUiDemo {
         row2.add(underlineCheckbox)
         row2.add(button("Apply Attr") { applyAttributes() })
 
+        val row3 = JPanel(GridLayout(1, 5, 8, 4))
+        row3.add(JLabel("Resize width"))
+        row3.add(resizeWidthField)
+        row3.add(JLabel("Resize height"))
+        row3.add(resizeHeightField)
+        row3.add(button("Resize") {
+            perform("resize") {
+                val w = resizeWidthField.text.toIntOrNull() ?: buffer.width
+                val h = resizeHeightField.text.toIntOrNull() ?: buffer.height
+                buffer.resize(w, h)
+            }
+        })
+
         panel.add(row1)
         panel.add(row2)
+        panel.add(row3)
         return panel
     }
 
@@ -181,6 +206,7 @@ private class BufferUiDemo {
     private fun perform(action: String, block: () -> Unit) {
         try {
             block()
+            viewOffset = 0
             refreshView(action)
         } catch (e: Exception) {
             appendLog("$action failed: ${e.message}")
@@ -189,13 +215,32 @@ private class BufferUiDemo {
     }
 
     private fun refreshView(action: String) {
-        screenArea.text = buffer.getScreenContent()
+        screenArea.text = buildViewportContent()
         fullArea.text = buffer.getFullContent()
 
         val cursor = buffer.getCursor()
-        cursorLabel.text = "Cursor: (${cursor.column}, ${cursor.row}) | FG=$selectedFg BG=$selectedBg"
+        val viewLabel = if (viewOffset > 0) " | view offset=$viewOffset" else ""
+        cursorLabel.text = "Cursor: (${cursor.column}, ${cursor.row}) | ${buffer.width}×${buffer.height}$viewLabel | FG=$selectedFg BG=$selectedBg"
 
         appendLog("$action | cursor=(${cursor.column}, ${cursor.row})")
+    }
+
+    private fun buildViewportContent(): String {
+        if (viewOffset == 0) return buffer.getScreenContent()
+        // Build a viewport: show rows shifted up by viewOffset into scrollback
+        val lines = mutableListOf<String>()
+        val scrollbackRows = buffer.scrollbackSize
+        // Scrollback rows shown at top (viewOffset rows from scrollback, most recent first)
+        val sbStart = (viewOffset - 1).coerceAtMost(scrollbackRows - 1)
+        for (i in sbStart downTo (sbStart - buffer.height + 1).coerceAtLeast(0)) {
+            lines.add(buffer.getScrollbackLine(i))
+        }
+        // Fill remaining with screen rows from the top
+        val screenRowsToShow = buffer.height - lines.size
+        for (row in 0 until screenRowsToShow) {
+            lines.add(buffer.getLine(row))
+        }
+        return lines.joinToString("\n")
     }
 
     private fun appendLog(message: String) {
@@ -203,7 +248,7 @@ private class BufferUiDemo {
         logArea.append("[$timestamp] $message\n")
         logArea.caretPosition = logArea.document.length
     }
-
+ 
     private fun button(label: String, onClick: () -> Unit): JButton = JButton(label).apply {
         addActionListener { onClick() }
     }

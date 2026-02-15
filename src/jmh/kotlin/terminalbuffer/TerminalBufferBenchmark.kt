@@ -62,4 +62,34 @@ open class TerminalBufferBenchmark {
         }
         return buffer.getFullContent()
     }
+
+    @Benchmark
+    fun resizeShrinkWidth() {
+        fillScreenWithContent(buffer)
+        buffer.resize(40, 24)
+    }
+
+    @Benchmark
+    fun resizeGrowWidth() {
+        val narrow = TerminalBuffer(width = 40, height = 24, maxScrollback = 1000)
+        fillScreenWithContent(narrow)
+        narrow.resize(80, 24)
+    }
+
+    @Benchmark
+    fun resizeWithFullScrollback() {
+        repeat(1000) {
+            buffer.setCursor(0, 0)
+            buffer.write("Scrollback line $it with some content here")
+            buffer.insertLineAtBottom()
+        }
+        buffer.resize(40, 24)
+    }
+
+    private fun fillScreenWithContent(buf: TerminalBuffer) {
+        for (row in 0 until buf.height) {
+            buf.setCursor(0, row)
+            buf.write("Row $row: sample content for resize benchmark")
+        }
+    }
 }

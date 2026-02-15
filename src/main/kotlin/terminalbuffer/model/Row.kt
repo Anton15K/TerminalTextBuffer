@@ -8,6 +8,9 @@ package terminalbuffer.model
 class Row(
     val width: Int,
 ) {
+    /** Indicates this row's content continues on the next row (soft wrap). */
+    var wrapped: Boolean = false
+
     private val cells: Array<Cell>
 
     init {
