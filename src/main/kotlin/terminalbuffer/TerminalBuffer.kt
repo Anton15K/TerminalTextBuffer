@@ -147,14 +147,28 @@ class TerminalBuffer(
 
     fun getScrollbackLine(scrollbackRow: Int): String = getScrollbackRowByRecentIndex(scrollbackRow).asString()
 
-    fun getScreenContent(): String = screen.joinToString("\n") { it.asString() }
+    fun getScreenContent(): String {
+        val sb = StringBuilder(height * (width + 1))
+        for (i in 0 until height) {
+            if (i > 0) sb.append('\n')
+            sb.append(screen[i].asString())
+        }
+        return sb.toString()
+    }
 
     fun getFullContent(): String {
-        val allRows = buildList {
-            addAll(scrollback)
-            addAll(screen)
+        val totalRows = scrollback.size + height
+        val sb = StringBuilder(totalRows * (width + 1))
+        for ((i, row) in scrollback.withIndex()) {
+            if (i > 0) sb.append('\n')
+            sb.append(row.asString())
         }
-        return allRows.joinToString("\n") { it.asString() }
+        if (scrollback.isNotEmpty()) sb.append('\n')
+        for (i in 0 until height) {
+            if (i > 0) sb.append('\n')
+            sb.append(screen[i].asString())
+        }
+        return sb.toString()
     }
 
     private fun insertSingleChar(char: Char): Boolean {
