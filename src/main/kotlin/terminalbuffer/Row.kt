@@ -24,5 +24,10 @@ class Row(
         }
     }
 
-    fun asString(): String = String(cells.map { it.char }.toCharArray()).trimEnd()
+    fun asString(): String {
+        var end = width
+        while (end > 0 && cells[end - 1].char == ' ') end--
+        if (end == 0) return ""
+        return String(CharArray(end) { cells[it].char })
+    }
 }
