@@ -9,6 +9,11 @@ Build and test:
 
 - `./gradlew build`
 - `./gradlew test`
+- `./gradlew test jacocoTestReport`
+
+Coverage report:
+
+- `build/reports/jacoco/test/html/index.html`
 
 ## Architecture
 
@@ -18,8 +23,8 @@ The model is layered as:
 - `Row` — fixed-width `Array<Cell>` wrapper. Carries a `wrapped` flag indicating the row's content continues on the next row (soft wrap).
 - `ReflowHelper` — standalone reflow algorithm that groups wrapped rows into logical lines and re-chunks them to a new width.
 - `TerminalBuffer` — owns:
-  - `screen: Array<Row>` with `height` rows
-  - `scrollback: ArrayDeque<Row>` capped by `maxScrollback`
+  - `screen: ScreenGrid`
+  - `scrollback: ScrollbackBuffer` capped by `maxScrollback`
 
 When a line is inserted at the bottom, the top screen row is pushed to scrollback (FIFO eviction on overflow).
 
@@ -35,15 +40,20 @@ When a line is inserted at the bottom, the top screen row is pushed to scrollbac
 - **Cursor and scrolling**: `insertLineAtBottom()` does not change cursor coordinates; screen content shifts under a stable cursor position.
 - **Scrollback eviction**: `ArrayDeque` with FIFO cap (`removeFirst` when above max size).
 - **Resize — hybrid reflow width + simple height**: width changes trigger content reflow using the `wrapped` flag on `Row` to identify soft-wrapped logical lines. Consecutive wrapped rows are merged, cells are flattened, and re-chunked to the new width. Height changes push excess rows to scrollback or pull them back. Scrollback is also reflowed to the new width. This preserves content across width changes while keeping the implementation simple. The `wrapped` flag is tracked during `insert` operations (which produce soft wraps); `write` (which truncates at the edge) does not set it.
+- **Wrap metadata consistency**: rows edited via `write`/`fillLine` are treated as explicit standalone line state, and stale wrap links are cleared to keep resize reflow behavior correct.
 
 ## Possible improvements
 
 - Replace screen shifting with a circular screen buffer to avoid row-copy shifts on scroll.
-- Add 256-color and true-color support.
 - Build ANSI/VT escape parser to drive buffer updates from terminal streams.
-- Add full Unicode grapheme-cluster support (combining marks, ZWJ sequences, wide chars).
+
 
 ## Testing
 
-The test suite is organized by feature (`CellTest`, `RowTest`, `CursorTest`, `WriteTest`, `InsertTest`, `ScrollbackTest`, `ClearTest`, `ContentAccessTest`, `EdgeCaseTest`).
-It covers happy paths, boundary behavior, and error scenarios.
+The test suite is organized by feature and model type:
+
+- Core buffer behavior: `WriteTest`, `InsertTest`, `CursorTest`, `ScrollbackTest`, `ClearTest`, `ContentAccessTest`, `ResizeTest`, `EdgeCaseTest`
+- Model/value objects: `CellTest`, `RowTest`, `ColorTest`, `TextAttributesTest`, `AttributesTest`
+- Internal component behavior: `ScrollbackBufferTest`
+
+It covers happy paths, boundary behavior, resize/reflow semantics, and regression scenarios.
