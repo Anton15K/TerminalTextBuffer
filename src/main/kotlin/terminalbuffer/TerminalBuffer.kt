@@ -84,13 +84,8 @@ class TerminalBuffer(
     override fun write(text: String) {
         if (text.isEmpty()) return
 
-        // `write` is a direct overwrite operation and never creates soft wraps.
-        // Clear any stale wrap marker on the target row so later resize reflow
-        // does not incorrectly merge it with the next row.
         screen[cursorRow].wrapped = false
         if (cursorColumn == 0 && cursorRow > 0) {
-            // Rewriting a row from column 0 makes it a standalone line start.
-            // Break any stale continuation link from the previous row.
             screen[cursorRow - 1].wrapped = false
         }
 
@@ -146,8 +141,8 @@ class TerminalBuffer(
         require(newHeight > 0) { "newHeight must be greater than 0" }
         if (newWidth == width && newHeight == height) return
 
-        // Collect all rows: scrollback (oldest first) + screen (top to bottom)
-        // Trim trailing empty padding rows from screen (keep at least up to cursor row)
+
+
         val screenRows = screen.getRows().toMutableList()
         while (screenRows.size > cursorRow + 1 &&
             !screenRows.last().wrapped &&
@@ -157,19 +152,17 @@ class TerminalBuffer(
         }
         val allRows = scrollback.getRows() + screenRows
 
-        // Reflow to new width
+
         val reflowed = reflowRows(allRows, newWidth)
 
-        // Rebuild screen and scrollback
+
         val newScreen = ScreenGrid(newWidth, newHeight)
         if (reflowed.size <= newHeight) {
-            // All reflowed rows fit on screen — no scrollback needed
             for (i in reflowed.indices) {
                 newScreen[i] = reflowed[i]
             }
             scrollback.replaceAll(emptyList())
         } else {
-            // Last newHeight rows go to screen, rest to scrollback
             val scrollbackRows = reflowed.subList(0, reflowed.size - newHeight)
             val screenRows = reflowed.subList(reflowed.size - newHeight, reflowed.size)
             for (i in screenRows.indices) {
@@ -182,7 +175,7 @@ class TerminalBuffer(
         width = newWidth
         height = newHeight
 
-        // Clamp cursor
+
         cursorColumn = cursorColumn.coerceIn(0, newWidth - 1)
         cursorRow = cursorRow.coerceIn(0, newHeight - 1)
     }
@@ -255,7 +248,7 @@ class TerminalBuffer(
             return
         }
 
-        // Cursor is at right edge — mark source row as wrapped (soft wrap)
+
         screen[cursorRow].wrapped = true
 
         if (cursorRow < height - 1) {

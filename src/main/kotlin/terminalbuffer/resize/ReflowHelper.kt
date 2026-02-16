@@ -15,15 +15,12 @@ fun reflowRows(rows: List<Row>, newWidth: Int): List<Row> {
 
     val result = mutableListOf<Row>()
 
-    // Group consecutive rows into logical lines (runs where all but the last have wrapped=true)
     var i = 0
     while (i < rows.size) {
-        // Collect cells for this logical line
         val cells = mutableListOf<Cell>()
         while (i < rows.size) {
             val row = rows[i]
             val isLast = !row.wrapped
-            // Add all cells from this row
             for (col in 0 until row.width) {
                 cells.add(row[col])
             }
@@ -31,12 +28,10 @@ fun reflowRows(rows: List<Row>, newWidth: Int): List<Row> {
             if (isLast) break
         }
 
-        // Trim trailing empty cells from the logical line
         while (cells.isNotEmpty() && isDefaultEmpty(cells.last())) {
             cells.removeAt(cells.size - 1)
         }
 
-        // Re-chunk into rows of newWidth
         if (cells.isEmpty()) {
             result.add(Row(newWidth))
         } else {

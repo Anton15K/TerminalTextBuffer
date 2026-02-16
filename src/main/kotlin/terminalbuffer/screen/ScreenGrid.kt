@@ -41,10 +41,6 @@ class ScreenGrid(
         rows[row].fillWith(char, attributes)
     }
 
-    /**
-     * Shifts all rows up by one. Returns the detached top row (before shifting)
-     * and inserts a blank row at the bottom.
-     */
     fun shiftRowsUp(): Row {
         val detached = rows[0]
         for (row in 0 until (height - 1)) {
@@ -54,10 +50,6 @@ class ScreenGrid(
         return detached
     }
 
-    /**
-     * Shifts all rows down by one. Returns the detached bottom row (before shifting)
-     * and inserts [newTop] at the top.
-     */
     fun shiftRowsDown(newTop: Row): Row {
         val detached = rows[height - 1]
         for (row in (height - 1) downTo 1) {
